@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Call this skript as 
+#
+# bash /path/to/web-km200-to-mqtt gateway/DateTime system/sensors/temperatures/outdoor_t1 ...
+#
+# where /path/to/web-km200-to-mqtt gateway/DateTime, system/sensors/temperatures/outdoor_t1, ...,
+# are just examples for data readings that you want to fetch from your Buderus heating system.
+# The decrypted JSON will be published as buderus/system/sensors/temperatures/outdoor_t1 etc
+# through your MQTT broker.
+
+# To use this skript, redefine the following values as needed for your system in /etc/buderus-credentials
+Gateway=TK-850-JH3E-NET
+GatewayPassword=NeUCsyQMLVYqKJec
+PrivatePassword='HnE75f+a%aXP' # Make sure to properly escape special characters for bash if necessary
+MqttHost=mosquitto.local
+MqttUser=MqttUser
+MqttPassword=MqttPassword
+
+# The above credentials will be replaced with the real passwords/hostnames etc from this credentials file
+. /etc/buderus-credentials
+
+# Derive KM200 Encryption key from the passwords...
+Magic=$(printf \\x86\\x78\\x45\\xe9\\x7c\\x4e\\x29\\xdc\\xe5\\x22\\xb9\\xa7\\xd3\\xa3\\xe0\\x7b\\x15\\x2b\\xff\\xad\\xdd\\xbe\\xd7\\xf5\\xff\\xd8\\x42\\xe9\\x89\\x5a\\xd1\\xe4)
+Part1=$(echo -n "$GatewayPassword$Magic" | md5sum | cut -c-32)
+Part2=$(echo -n "$Magic$PrivatePassword" | md5sum | cut -c-32)
+Key="$Part1$Part2"
+
+# Loop over all command line parameters, retrieve the JSON for each, decrypt and publish
+for reading in "$@"
+do
+  # Retrieve data and decrypt it to JSON
+  json=$(curl -A TeleHeater http://"$Gateway/$reading" -s | grep .. | base64 --decode | openssl enc -aes-256-ecb -d -nopad -K $Key | tr -d \\0)
+
+  # Publish json data through mqtt
+  mosquitto_pub -t "buderus/$reading" -h $MqttHost -u $MqttUser -P $MqttPassword -m "$json"
+done
