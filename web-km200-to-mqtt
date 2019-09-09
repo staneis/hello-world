@@ -1,10 +1,11 @@
 #!/bin/bash
-
+# Reads data from Buderus heating system with a web-km200 gateway.
+# 
 # Call this skript as 
 #
 # bash /path/to/web-km200-to-mqtt gateway/DateTime system/sensors/temperatures/outdoor_t1 ...
 #
-# where /path/to/web-km200-to-mqtt gateway/DateTime, system/sensors/temperatures/outdoor_t1, ...,
+# where    gateway/DateTime, system/sensors/temperatures/outdoor_t1, ...,
 # are just examples for data readings that you want to fetch from your Buderus heating system.
 # The decrypted JSON will be published as buderus/system/sensors/temperatures/outdoor_t1 etc
 # through your MQTT broker.
