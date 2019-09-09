@@ -1,0 +1,31 @@
+#!/bin/bash
+# Encrypts and sends data to Buderus heating system gateway web-km200.
+#
+# Call this skript as
+#
+# bash /path/to/web-km200-set-value heatingCircuits/hc1/temperatureLevels/comfort2 '{"value":20}'
+#
+# where heatingCircuits/hc1/temperatureLevels/comfort2 is the data field that you want to
+# set in your Buderus heating system, and {"value":20} is the data you want to write.  This
+# example would set the desired comfort room temperature of the first heating circuit to 20C.
+
+# To use this skript, redefine the following values as needed for your system in /etc/buderus-credentials
+Gateway=TK-850-JH3E-NET
+GatewayPassword=NeUCsyQMLVYqKJec
+PrivatePassword='HnE75f+a%aXP' # Make sure to properly escape special characters for bash if necessary
+
+# The above credentials will be replaced with the real passwords/hostnames etc from this credentials file
+. /etc/buderus-credentials
+
+# Derive km200 encryption key from the passwords...
+Magic=$(printf \\x86\\x78\\x45\\xe9\\x7c\\x4e\\x29\\xdc\\xe5\\x22\\xb9\\xa7\\xd3\\xa3\\xe0\\x7b\\x15\\x2b\\xff\\xad\\xdd\\xbe\\xd7\\xf5\\xff\\xd8\\x42\\xe9\\x89\\x5a\\xd1\\xe4)
+Part1=$(echo -n "$GatewayPassword$Magic" | md5sum | cut -c-32)
+Part2=$(echo -n "$Magic$PrivatePassword" | md5sum | cut -c-32)
+Key="$Part1$Part2"
+
+name="$1"
+# encrypt the value
+value="$(echo -n "$2" | openssl enc -aes-256-ecb -K $Key -a)"
+
+# Post it to the km200
+curl -A TeleHeater http://"$Gateway/$name" -s -d "$value"
