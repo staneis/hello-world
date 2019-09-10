@@ -1,6 +1,6 @@
 #!/bin/bash
 # Reads data from Buderus heating system with a web-km200 gateway.
-# 
+#
 # Call this skript as 
 #
 # bash /path/to/web-km200-to-mqtt gateway/DateTime system/sensors/temperatures/outdoor_t1 ...
@@ -27,12 +27,17 @@ Part1=$(echo -n "$GatewayPassword$Magic" | md5sum | cut -c-32)
 Part2=$(echo -n "$Magic$PrivatePassword" | md5sum | cut -c-32)
 Key="$Part1$Part2"
 
+
+
 # Loop over all command line parameters, retrieve the JSON for each, decrypt and publish
 for reading in "$@"
 do
   # Retrieve data and decrypt it to JSON
   json=$(curl -A TeleHeater http://"$Gateway/$reading" -s | grep .. | base64 --decode | openssl enc -aes-256-ecb -d -nopad -K $Key | tr -d \\0)
 
-  # Publish json data through mqtt
+  # Publish json data through mqtt and stdout
   mosquitto_pub -t "buderus/$reading" -h $MqttHost -u $MqttUser -P $MqttPassword -m "$json"
+  if [ -n "$WEBKM200_VERBOSE" ]
+  then echo " $reading $json"
+  fi
 done
