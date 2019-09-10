@@ -1,0 +1,10 @@
+#!/bin/bash
+export WEBKM200_VERBOSE=v
+for reading in "$@"
+do
+  result=$(bash $(dirname $0)/web-km200-to-mqtt $reading)
+  if echo "$result" | grep -q 'type":"refEnum'
+  then bash $0 $(echo "$result" | cut -d\[ -f2- | tr '{' '\n' | cut '-d"' -f4 | cut -b 2-)
+  else echo "$result"
+  fi
+done
